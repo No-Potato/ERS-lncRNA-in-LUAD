@@ -1,0 +1,58 @@
+library(survival)
+library(forestplot)
+pFilter=0.001
+rt=read.table("expTime.txt",header=T,sep="\t",check.names=F,row.names=1)
+
+outTab=data.frame()
+sigGenes=c("futime","fustat")
+for(i in colnames(rt[,3:ncol(rt)])){
+ cox <- coxph(Surv(futime, fustat) ~ rt[,i], data = rt)
+ coxSummary = summary(cox)
+ coxP=coxSummary$coefficients[,"Pr(>|z|)"]
+ if(coxP<pFilter){
+     sigGenes=c(sigGenes,i)
+		 outTab=rbind(outTab,
+		              cbind(id=i,
+		              HR=coxSummary$conf.int[,"exp(coef)"],
+		              HR.95L=coxSummary$conf.int[,"lower .95"],
+		              HR.95H=coxSummary$conf.int[,"upper .95"],
+		              pvalue=coxSummary$coefficients[,"Pr(>|z|)"])
+		              )
+  }
+}
+write.table(outTab,file="tcgaUniCox.txt",sep="\t",row.names=F,quote=F)
+uniSigExp=rt[,sigGenes]
+uniSigExp=cbind(id=row.names(uniSigExp),uniSigExp)
+write.table(uniSigExp,file="tcgaUniSigExp.txt",sep="\t",row.names=F,quote=F)
+
+rt <- read.table("tcgaUniCox.txt",header=T,sep="\t",row.names=1,check.names=F)
+rt$HR <- sprintf("%.2f",rt$"HR")
+rt$HR.95L<- sprintf("%.2f",rt$"HR.95L")
+rt$HR.95H<- sprintf("%.2f",rt$"HR.95H")
+rt$pvalue <- ifelse(rt$pvalue<0.001, "<0.001", sprintf("%.3f", rt$pvalue))
+rt$HR2 <- paste0(rt$HR,"(",rt$HR.95L,", ",rt$HR.95H,")")
+rt <- cbind(rownames(rt),rt)
+rt <- cbind(rt[,c(1,2,3,4)],HR2 = rt$HR2,pvalue = rt[,5])
+
+pdf(file="forest1.pdf", width = 8.5,height = 5.0)
+forestplot(rt[,c(1,5,6)],
+           c(rt$HR),
+           c(rt$HR.95L), 
+           c(rt$HR.95H),
+           zero = 1,
+           xlog=FALSE, 
+           #grid = structure(c(-5, 5), gp = gpar(col = "steelblue", lty = 2)),
+           clip = c(1, 2),
+           xticks = c(0.7,1,1.1),
+           txt_gp = fpTxtGp(ticks = gpar(cex = 1), xlab = gpar(cex = 1.5), cex = 1.2),
+           boxsize = 0.2,
+           graph.pos = 2, 
+           line.margin = 0.1,
+           #fn.ci_norm = fpDrawCircleCI,
+           col=fpColors(line = "#1c61b6", 
+                        box="#1c61b6"), 
+           lty.ci = 7,  
+           lwd.ci = 3,  
+           ci.vertices.height = 0.1
+)
+dev.off()

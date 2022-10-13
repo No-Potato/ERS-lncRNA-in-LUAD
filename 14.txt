@@ -1,0 +1,33 @@
+library(survival)
+library(rms)
+
+TCGA<-read.table("clinical.txt",header=T,sep="\t") 
+
+TCGA$age<-factor(TCGA$age,labels=c("0","1"))
+TCGA$gender<-factor(TCGA$gender,labels=c("0","1"))
+TCGA$T<-factor(TCGA$T,labels=c("0","1"))
+TCGA$N<-factor(TCGA$N,labels=c("0","1"))
+TCGA$M<-factor(TCGA$M,labels=c("0","1"))
+TCGA$risk<-factor(TCGA$risk, labels=c("1","2","3","4","5","6"))
+
+cox1 <- cph(Surv(survival_time,status) ~ age +  gender+T + N + M + risk,surv=T,x=T, y=T,time.inc = 1*1*3,data=TCGA)
+cal <- calibrate(cox1, cmethod="KM", method="boot", u=1*1*3, m= 100, B=1000)
+
+pdf("calibrate3.pdf")
+plot(cal,lwd=2,lty=1,errbar.col="black",xlim = c(0.1,1),ylim = c(0.1,1),xlab ="Nomogram-Predicted Probability of 3-Year OS",ylab="Actual 3-Year OS",col="brown",sub=F)
+mtext("")
+box(lwd = 0.5)
+abline(0,1,lty = 3,lwd = 2,col = "black")
+dev.off()
+
+
+#5-year
+cox2 <- cph(Surv(survival_time,status) ~ age + gender+T + N + M + risk,surv=T,x=T, y=T,time.inc = 1*1*5,data=TCGA)
+cal <- calibrate(cox2, cmethod="KM", method="boot", u=1*1*5, m= 100, B=1000)
+
+pdf("calibrate5.pdf")
+plot(cal,lwd=2,lty=1,errbar.col="black",xlim = c(0.1,1),ylim = c(0.1,1),xlab ="Nomogram-Predicted Probability of 5-Year OS",ylab="Actual 5-Year OS",col="brown",sub=F)
+mtext("")
+box(lwd = 0.5)
+abline(0,1,lty = 3,lwd = 2,col = "black")
+dev.off()      

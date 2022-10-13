@@ -1,0 +1,26 @@
+library(rms)
+
+riskFile="tcgaRisk.txt"
+cliFile="clinical.txt"
+outFile="tcga.Nomogram.pdf"
+risk=read.table(riskFile,header=T,sep="\t",check.names=F,row.names=1)
+cli=read.table(cliFile,sep="\t",check.names=F,header=T,row.names=1)
+sameSample=intersect(row.names(cli),row.names(risk))
+risk=risk[sameSample,]
+cli=cli[sameSample,]
+rt=cbind(futime=risk[,1],fustat=risk[,2],cli,riskScore=risk[,(ncol(risk)-1)])
+
+dd <- datadist(rt)
+options(datadist="dd")
+
+f <- cph(Surv(futime, fustat) ~ age +  T + N + M +riskScore, x=T, y=T, surv=T, data=rt, time.inc=1)
+surv <- Survival(f)
+
+nom <- nomogram(f, fun=list(function(x) surv(3, x), function(x) surv(5, x)), 
+    lp=F, funlabel=c("3-year survival", "5-year survival"), 
+    maxscale=100, 
+    fun.at=c(0.99, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3,0.2,0.1,0.05))  
+
+pdf(file=outFile,height=10,width=11)
+plot(nom)
+dev.off()

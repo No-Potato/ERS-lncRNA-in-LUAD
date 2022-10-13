@@ -1,0 +1,19 @@
+library(survival)
+library(timeROC)
+
+TCGA<-read.table("risk_score.txt",header=T,sep="\t")
+pbrownict_3_year<- 3*1
+pbrownict_5_year<- 5*1
+
+ROC<-timeROC(T=TCGA$survival_time,delta=TCGA$status,
+                  marker=TCGA$risk_score,cause=1,
+                  weighting="marginal",
+                  times=c(pbrownict_3_year,pbrownict_5_year),ROC=TRUE)
+
+pdf("ROC.pdf")
+plot(ROC,time=pbrownict_3_year,col="brown",title=FALSE,lwd=3)
+plot(ROC,time=pbrownict_5_year,col="blue",add=TRUE,title=FALSE,lwd=3)
+legend("bottomright",
+       c(paste("AUC of 3 year OS: ",round(ROC$AUC[1],3)),
+         paste("AUC of 5 year OS: ",round(ROC$AUC[2],3))),col=c("brown","blue"),lwd=3)
+dev.off()
